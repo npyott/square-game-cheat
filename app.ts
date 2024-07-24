@@ -22,13 +22,13 @@ const LineRepetition = Symbol("Line Repetition");
 type ThriceRepetitionViolation = {
     [ThriceRepetition]: (
         | {
-              column: number;
-              rows: [number, number, number];
-          }
+            column: number;
+            rows: [number, number, number];
+        }
         | {
-              row: number;
-              columns: [number, number, number];
-          }
+            row: number;
+            columns: [number, number, number];
+        }
     ) & {
         color: ActiveColor;
     };
@@ -37,11 +37,11 @@ type ThriceRepetitionViolation = {
 type OverSaturationViolation = {
     [OverSaturation]: (
         | {
-              column: number;
-          }
+            column: number;
+        }
         | {
-              row: number;
-          }
+            row: number;
+        }
     ) & {
         color: ActiveColor;
         positionVector: number[];
@@ -50,12 +50,12 @@ type OverSaturationViolation = {
 
 type LineRepetitionViolation = {
     [LineRepetition]:
-        | {
-              columns: [number, number];
-          }
-        | {
-              rows: [number, number];
-          };
+    | {
+        columns: [number, number];
+    }
+    | {
+        rows: [number, number];
+    };
 };
 
 type Violation =
@@ -279,6 +279,55 @@ const validateBoard = (board: Board): Violation | null =>
     findLineRepetition(board);
 
 // Game play
+type Move = {
+    color: Color;
+    row: number;
+    column: number;
+};
+
+const cloneBoard = (board: Board): Board => board.map((row) => [...row]);
+
+const playMove = (
+    board: Board,
+    { row, column, color }: Move
+): { newBoard: Board; violation: Violation | null } => {
+    const newBoard = cloneBoard(board);
+    newBoard[row][column] = color;
+
+    return {
+        newBoard,
+        violation: validateBoard(newBoard),
+    };
+};
+
+const playMoves = (
+    board: Board,
+    moves: Move[]
+):
+    | Board
+    | {
+        board: Board;
+        moveIndex: number;
+        violation: Violation;
+    } => {
+    let updatedBoard = cloneBoard(board);
+    for (const [moveIndex, move] of moves.entries()) {
+        const { newBoard, violation } = playMove(updatedBoard, move);
+
+        if (violation) {
+            return {
+                violation,
+                moveIndex,
+                board: newBoard,
+            };
+        }
+
+        updatedBoard = newBoard;
+    }
+
+    return updatedBoard;
+};
+
 const countColors = (row: Row) =>
     row.reduce(
         (totals, color) => {
@@ -307,53 +356,71 @@ const naiveAutocompleteRow = (row: Row): Row => {
     return [...row];
 };
 
-type Move = {
-    color: Color;
-    row: number;
-    column: number;
-};
+const naiveAutocompleteBoard = (board: Board): Board => {
+    let newBoard = cloneBoard(board);
 
-const cloneBoard = (board: Board): Board => board.map((row) => [...row]);
-
-const playMove = (
-    board: Board,
-    { row, column, color }: Move
-): { newBoard: Board; violation: Violation | null } => {
-    const newBoard = cloneBoard(board);
-    newBoard[row][column] = color;
-
-    return {
-        newBoard,
-        violation: validateBoard(newBoard),
-    };
-};
-
-const playMoves = (
-    board: Board,
-    moves: Move[]
-):
-    | Board
-    | {
-          board: Board;
-          moveIndex: number;
-          violation: Violation;
-      } => {
-    let updatedBoard = cloneBoard(board);
-    for (const [moveIndex, move] of moves.entries()) {
-        const { newBoard, violation } = playMove(updatedBoard, move);
-
-        if (violation) {
-            return {
-                violation,
-                moveIndex,
-                board: newBoard,
-            };
-        }
-
-        updatedBoard = newBoard;
+    for(const [rowIndex, row] of rows(newBoard).entries()) {
+        const newRow = naiveAutocompleteRow(row);
+        newBoard[rowIndex] = newRow;
     }
 
-    return updatedBoard;
-};
+    for(const [columnIndex, column] of columns(newBoard).entries()) {
+        const newColumn = naiveAutocompleteRow(column) as Column;
+        newBoard = newBoard.map((row, rowIndex) => {
+            row[columnIndex] = newColumn[rowIndex];
 
-const findMoveByNegation = (board: Board): Move => {};
+            return row;
+        })
+    }
+
+    return newBoard;
+}
+
+const findMoveByNegation = (board: Board): {
+    move: Move;
+    violation: Violation
+} | null => {
+    for (const [rowIndex, row] of rows(board).entries()) {
+        for (const [columnIndex, color] of row.entries()) {
+            if (color !== Grey) {
+                continue;
+            }
+
+            const redMove: Move = {
+                color: Red,
+                row: rowIndex,
+                column: columnIndex
+            };
+
+            const { newBoard: redBoard } = playMove(board, redMove);
+
+            const redViolation = validateBoard(naiveAutocompleteBoard(redBoard));
+
+            if (redViolation) {
+                return {
+                    move: redMove,
+                    violation: redViolation
+                }
+            }
+
+            const blueMove: Move = {
+                color: Blue,
+                row: rowIndex,
+                column: columnIndex
+            };
+
+            const { newBoard: blueBoard } = playMove(board, blueMove);
+
+            const blueViolation = validateBoard(naiveAutocompleteBoard(blueBoard));
+
+            if (blueViolation) {
+                return {
+                    move: blueMove,
+                    violation: blueViolation
+                }
+            }
+        }
+    }
+
+    return null;
+};

@@ -392,22 +392,22 @@ const findMoveByNegation = (board: Board): {
                 column: columnIndex
             };
 
+            const blueMove: Move = {
+                color: Blue,
+                row: rowIndex,
+                column: columnIndex
+            };
+
             const { newBoard: redBoard } = playMove(board, redMove);
 
             const redViolation = validateBoard(naiveAutocompleteBoard(redBoard));
 
             if (redViolation) {
                 return {
-                    move: redMove,
+                    move: blueMove,
                     violation: redViolation
                 }
             }
-
-            const blueMove: Move = {
-                color: Blue,
-                row: rowIndex,
-                column: columnIndex
-            };
 
             const { newBoard: blueBoard } = playMove(board, blueMove);
 
@@ -415,7 +415,7 @@ const findMoveByNegation = (board: Board): {
 
             if (blueViolation) {
                 return {
-                    move: blueMove,
+                    move: redMove,
                     violation: blueViolation
                 }
             }

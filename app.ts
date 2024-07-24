@@ -22,13 +22,13 @@ const LineRepetition = Symbol("Line Repetition");
 type ThriceRepetitionViolation = {
     [ThriceRepetition]: (
         | {
-            column: number;
-            rows: [number, number, number];
-        }
+              column: number;
+              rows: [number, number, number];
+          }
         | {
-            row: number;
-            columns: [number, number, number];
-        }
+              row: number;
+              columns: [number, number, number];
+          }
     ) & {
         color: ActiveColor;
     };
@@ -37,11 +37,11 @@ type ThriceRepetitionViolation = {
 type OverSaturationViolation = {
     [OverSaturation]: (
         | {
-            column: number;
-        }
+              column: number;
+          }
         | {
-            row: number;
-        }
+              row: number;
+          }
     ) & {
         color: ActiveColor;
         positionVector: number[];
@@ -50,12 +50,12 @@ type OverSaturationViolation = {
 
 type LineRepetitionViolation = {
     [LineRepetition]:
-    | {
-        columns: [number, number];
-    }
-    | {
-        rows: [number, number];
-    };
+        | {
+              columns: [number, number];
+          }
+        | {
+              rows: [number, number];
+          };
 };
 
 type Violation =
@@ -76,7 +76,7 @@ const findThriceRepetitionRow = (
         const c2 = row[index - 1];
         const c1 = row[index - 2];
 
-        if (c1 === c2 && c1 === c3) {
+        if (c1 !== Grey && c1 === c2 && c1 === c3) {
             return { columns: [index - 2, index - 1, index], color: c1 };
         }
     }
@@ -306,10 +306,10 @@ const playMoves = (
 ):
     | Board
     | {
-        board: Board;
-        moveIndex: number;
-        violation: Violation;
-    } => {
+          board: Board;
+          moveIndex: number;
+          violation: Violation;
+      } => {
     let updatedBoard = cloneBoard(board);
     for (const [moveIndex, move] of moves.entries()) {
         const { newBoard, violation } = playMove(updatedBoard, move);
@@ -359,26 +359,28 @@ const naiveAutocompleteRow = (row: Row): Row => {
 const naiveAutocompleteBoard = (board: Board): Board => {
     let newBoard = cloneBoard(board);
 
-    for(const [rowIndex, row] of rows(newBoard).entries()) {
+    for (const [rowIndex, row] of rows(newBoard).entries()) {
         const newRow = naiveAutocompleteRow(row);
         newBoard[rowIndex] = newRow;
     }
 
-    for(const [columnIndex, column] of columns(newBoard).entries()) {
+    for (const [columnIndex, column] of columns(newBoard).entries()) {
         const newColumn = naiveAutocompleteRow(column) as Column;
         newBoard = newBoard.map((row, rowIndex) => {
             row[columnIndex] = newColumn[rowIndex];
 
             return row;
-        })
+        });
     }
 
     return newBoard;
-}
+};
 
-const findMoveByNegation = (board: Board): {
+const findMoveByNegation = (
+    board: Board
+): {
     move: Move;
-    violation: Violation
+    violation: Violation;
 } | null => {
     for (const [rowIndex, row] of rows(board).entries()) {
         for (const [columnIndex, color] of row.entries()) {
@@ -389,38 +391,78 @@ const findMoveByNegation = (board: Board): {
             const redMove: Move = {
                 color: Red,
                 row: rowIndex,
-                column: columnIndex
+                column: columnIndex,
             };
 
             const blueMove: Move = {
                 color: Blue,
                 row: rowIndex,
-                column: columnIndex
+                column: columnIndex,
             };
 
             const { newBoard: redBoard } = playMove(board, redMove);
 
-            const redViolation = validateBoard(naiveAutocompleteBoard(redBoard));
+            const redViolation = validateBoard(
+                naiveAutocompleteBoard(redBoard)
+            );
 
             if (redViolation) {
                 return {
                     move: blueMove,
-                    violation: redViolation
-                }
+                    violation: redViolation,
+                };
             }
 
             const { newBoard: blueBoard } = playMove(board, blueMove);
 
-            const blueViolation = validateBoard(naiveAutocompleteBoard(blueBoard));
+            const blueViolation = validateBoard(
+                naiveAutocompleteBoard(blueBoard)
+            );
 
             if (blueViolation) {
                 return {
                     move: redMove,
-                    violation: blueViolation
-                }
+                    violation: blueViolation,
+                };
             }
         }
     }
 
     return null;
+};
+
+const trySolveByNegation = (
+    board: Board
+): {
+    board: Board;
+    moves: NonNullable<ReturnType<typeof findMoveByNegation>>[];
+    unexpectedViolation: Violation | null;
+} => {
+    let currentBoard = cloneBoard(board);
+    const moves: NonNullable<ReturnType<typeof findMoveByNegation>>[] = [];
+
+    let nextMove = findMoveByNegation(currentBoard);
+
+    let moveCount = 0;
+
+    while (nextMove && moveCount < board.length ** 2) {
+        moves.push(nextMove);
+        const { newBoard, violation } = playMove(currentBoard, nextMove.move);
+        if (violation) {
+            return {
+                board: newBoard,
+                moves,
+                unexpectedViolation: violation,
+            };
+        }
+
+        currentBoard = newBoard;
+        nextMove = findMoveByNegation(currentBoard);
+    }
+
+    return {
+        board: currentBoard,
+        moves,
+        unexpectedViolation: null,
+    };
 };

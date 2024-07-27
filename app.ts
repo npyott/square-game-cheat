@@ -466,3 +466,39 @@ const trySolveByNegation = (
         unexpectedViolation: null,
     };
 };
+
+const makeRow = (s: string): Row =>
+    [...s.trim().toLowerCase()].map((c) => {
+        switch (c) {
+            case "r":
+                return Red;
+            case "b":
+                return Blue;
+            case "g":
+            default:
+                return Grey;
+        }
+    });
+
+const exampleRaw = [
+    "ggrgbbrgrbgg",
+    "bggrggggrggr",
+    "gbggrrbggggg",
+    "grgggrgbgrgr",
+    "ggrrgggbgggr",
+    "grggggbggrrg",
+    "gggggrgrgbgg",
+    "bbrrgbgggggg",
+    "rggggggggggg",
+    "rggbggggrggg",
+    "grgggggbggbr",
+    "grrggrgggbrg",
+];
+
+const example = exampleRaw.map(makeRow) as Board;
+
+const { board, moves, unexpectedViolation } = trySolveByNegation(example);
+
+console.log(moves);
+console.log(board);
+console.log(unexpectedViolation);

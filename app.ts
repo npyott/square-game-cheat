@@ -481,24 +481,45 @@ const makeRow = (s: string): Row =>
     });
 
 const exampleRaw = [
-    "ggrgbbrgrbgg",
-    "bggrggggrggr",
-    "gbggrrbggggg",
-    "grgggrgbgrgr",
-    "ggrrgggbgggr",
-    "grggggbggrrg",
-    "gggggrgrgbgg",
-    "bbrrgbgggggg",
-    "rggggggggggg",
-    "rggbggggrggg",
-    "grgggggbggbr",
-    "grrggrgggbrg",
+    "rrbggrbb",
+    "bgrgggrb",
+    "bbrggbrr",
+    "rgbgrgbr",
+    "bgrgggrb",
+    "rrbrbbrb",
+    "bgrbgrbr",
+    "rbbrrbbr",
 ];
 
 const example = exampleRaw.map(makeRow) as Board;
 
 const { board, moves, unexpectedViolation } = trySolveByNegation(example);
 
-console.log(moves);
-console.log(board);
+console.log("-------------- Moves --------------");
+for (const move of moves) {
+    console.log("Move:", move.move);
+    console.log("Violation", move.violation, "\n");
+}
+
+console.log("-------------- Board --------------");
+console.log(
+    board
+        .map((row) =>
+            row
+                .map((square) => {
+                    switch (square) {
+                        case Red:
+                            return "🟥";
+                        case Blue:
+                            return "🟦";
+                        default:
+                            return "⬜";
+                    }
+                })
+                .join("")
+        )
+        .join("\n")
+);
+
+console.log("-------------- Violation --------------");
 console.log(unexpectedViolation);
